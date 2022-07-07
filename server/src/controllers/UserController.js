@@ -4,8 +4,25 @@ const argon2 = require('argon2')
 require('dotenv').config()
 
 class UserController {
+    //[GET] /api/user/users
+    // get list of users
+    //public
+    async getAllUser(req, res) {
+        try {
+            let users = await User.find({})
+            users = users.map((user) => {
+                const {password, isAdmin, createAt, updatedAt, __v, ...otherDetails} = user._doc
+                return otherDetails
+            })
+            res.status(200).json(users)
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({success: false, message: 'Internal server error'})
+        }
+    }
+
     // [GET] /api/user/:username
-    // get info
+    // get info of one user
     //  public
     async getUser(req,res) {
         const id = req.params.id
