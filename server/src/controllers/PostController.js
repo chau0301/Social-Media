@@ -2,7 +2,7 @@ const express = require('express')
 const { default: mongoose } = require('mongoose')
 require('dotenv').config()
 const Post = require('../models/postModel')
-const User = require('../models/postModel')
+const User = require('../models/userModel')
 
 class PostController {
     //[POST] /api/post/create
@@ -93,20 +93,24 @@ class PostController {
             res.status(500).json({success: false, message: 'Internal server error'})
         }
     }
-    //[POST] /api/post/:id/like
+    //[PUT] /api/post/:id/like
     //like/dislike a post
     //private
     async likePost(req, res) {
         const id = req.params.id
         const {userId} = req.body
-
+        if (!userId || !id) {
+            return res.status(400).json({success: false, message: 'undefined userId or postId'})
+        }
         try {
             const post = await Post.findById(id)
             if(post.likes.includes(userId)) {
                 await post.updateOne({$pull: {likes: userId}})
+                console.log(`${userId} dislike ${id}`);
                 res.json({success: true, message: 'Post disliked'})
             } else {
                 await post.updateOne({$push: {likes: userId}})
+                console.log(`${userId} like ${id}`);
                 res.json({success: true, message: 'Post liked'})
             }
         } catch (error) {
@@ -114,6 +118,7 @@ class PostController {
             res.status(500).json({success: false, message: 'Internal server error'})
         }
     }
+    //get
     async getTimelinePost(req,res) {
         const userId = req.params.id
         try {
@@ -121,13 +126,13 @@ class PostController {
             const followingPosts = await User.aggregate([
                 {
                     $match: {
-                        _id : new mongoose.Types.ObjectId(userId)
+                        _id: new mongoose.Types.ObjectId(userId),
                     }
                 },
                 {
                     $lookup: {
                         from: "posts",
-                        localField: "following",
+                        localField: "followings",
                         foreignField: "userId",
                         as: "followingPosts"
                     } 
@@ -139,11 +144,10 @@ class PostController {
                     }
                 }
             ])
-            
             res.json({
                 success: true, 
                 message: 'getTimelinePost successfully', 
-                post: currentUserPosts.concat(...followingPosts[0]
+                posts: currentUserPosts.concat(...followingPosts[0]
                     .followingPosts)
                     .sort((a,b) => b.createdAt - a.createdAt)
                 })

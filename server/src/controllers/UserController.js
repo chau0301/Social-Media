@@ -2,6 +2,7 @@ const express = require('express')
 const User = require('../models/userModel')
 const argon2 = require('argon2')
 require('dotenv').config()
+const jwt = require('jsonwebtoken')
 
 class UserController {
     //[GET] /api/user/users
@@ -44,8 +45,8 @@ class UserController {
     //  private
     async updateUser(req,res) {
         const id = req.params.id
-        const {currentUserId, currentUserAdminStatus, password} = req.body
-        if (id === currentUserId || currentUserAdminStatus ){
+        const {_id, currentUserAdminStatus, password} = req.body
+        if (id === _id){
             try {
                 if (password) {
                     const hashedPassword = await argon2.hash(password, process.env.SECRET_KEY)
@@ -53,7 +54,8 @@ class UserController {
                     console.log(hashedPassword)
                 }
                 const updatedUser = await User.findOneAndUpdate({'_id':id}, req.body, {new: true})
-                res.json({success: true, message: 'updated user', updatedUser})
+                const accessToken = jwt.sign({userId : updatedUser._id}, process.env.SECRET_KEY)
+                res.json({success: true, message: 'updated user', user: updatedUser, token: accessToken})
             } catch (error) {
                 console.log(error)
                 res.status(500).json({success: false, message: 'Internal server error'})
@@ -87,18 +89,19 @@ class UserController {
     // private
     async followUser(req, res) {
         const id = req.params.id
-        const {currentUserId} = req.body
-        if (currentUserId === id) {
+        const {_id} = req.body
+        if (_id === id) {
             res.status(403).json("Action forbidden")
         }
         else {
             try {
-                const followingUser = await User.findById(currentUserId) //user
+                const followingUser = await User.findById(_id) //user
                 const followedUser = await User.findById(id) //target
                 // const followed = followingUser.followings.includes(id)
                 if (!followingUser.followings.includes(id)) {
                     await followingUser.updateOne({$push : {followings : id}})
-                    await followedUser.updateOne({$push : {followers : currentUserId}})
+                    await followedUser.updateOne({$push : {followers : _id}})
+                    console.log(`${_id} follow ${id}`)
                     res.status(201).json({success: true, message: 'follow successfully'})
                 }
                 else {
@@ -116,19 +119,21 @@ class UserController {
     // private
     async unFollowUser(req, res) {
         const id = req.params.id
-        const {currentUserId} = req.body
-        if (currentUserId === id) {
+        const {_id} = req.body
+        if (_id === id) {
             res.status(403).json("Action forbidden")
         }
         else {
             try {
-                const followingUser = await User.findById(currentUserId) //user
+                const followingUser = await User.findById(_id) //user
                 const followedUser = await User.findById(id) //target
                 // const followed = followingUser.followings.includes(id)
                 if (followingUser.followings.includes(id)) {
                     await followingUser.updateOne({$pull : {followings : id}})
-                    await followedUser.updateOne({$pull : {followers : currentUserId}})
+                    await followedUser.updateOne({$pull : {followers : _id}})
+                    console.log(`${_id} unFollow ${id}`)
                     res.status(201).json({success: true, message: 'unFollow successfully'})
+                    
                 }
                 else {
                     res.status(403).json({success: false, message: 'not follow this user'})

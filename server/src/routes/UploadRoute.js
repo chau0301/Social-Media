@@ -13,13 +13,12 @@ const storage = multer.diskStorage({
 
 const upload = multer({storage: storage})
 
-router.post('/', upload.single("file", (req, res) => {
+router.post('/', upload.single("file"), (req, res) => {
     try {
-        res.json({success: true, message: 'file uploaded successfully'})
+        return res.json({success: true, message: 'file uploaded successfully'})
     } catch (error) {
-        console.log(error)
         res.status(500).json({success: false, message: 'Internal server error'})
     }
-}))
+})
 
 module.exports = router

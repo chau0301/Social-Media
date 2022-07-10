@@ -20,6 +20,7 @@ class AuthController {
             if (existing) {
                 res.status(400).json({success: false, message: "username already taken"})
             }
+            
             else {
                 const hashedPassword = await argon2.hash(password)
                 const newUser = new User({ username, password: hashedPassword, firstname, lastname })
@@ -35,7 +36,6 @@ class AuthController {
     }
     async login(req, res) {
         let {username, password} = req.body
-        console.log(username, password)
         username = username.toLowerCase()
         //simple validation
         if (!username || !password) {
@@ -49,7 +49,7 @@ class AuthController {
                 const verify = await argon2.verify(account.password, password)
                 if (verify) {
                     const accessToken = jwt.sign({userId : account._id}, process.env.SECRET_KEY, {expiresIn: process.env.EXPIRES_TIME})
-                    console.log('Login successfully!!')
+                    console.log(`${username} Login successfully!!`)
                     res.json({success: true, message: 'Login successfully!!', user:account, token: accessToken})
                     //res.set({'accessToken': accessToken})
                 } else {
